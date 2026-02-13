@@ -1,0 +1,7 @@
+node_modules/
+dist/
+output/
+config.json
+*.png
+*.jpg
+*.mp4

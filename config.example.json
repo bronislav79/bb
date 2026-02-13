@@ -1,0 +1,18 @@
+{
+  "tokens": [
+    "eyJ...token1...",
+    "eyJ...token2...",
+    "eyJ...token3...",
+    "eyJ...token4...",
+    "eyJ...token5..."
+  ],
+  "prompts": [
+    "A cyberpunk cat in a neon-lit alley",
+    "A peaceful mountain landscape at sunrise",
+    "An underwater city with bioluminescent buildings",
+    "A steampunk airship flying over Victorian London",
+    "A crystal forest on an alien planet"
+  ],
+  "aspectRatio": "IMAGE_ASPECT_RATIO_LANDSCAPE",
+  "outputDir": "./output"
+}
