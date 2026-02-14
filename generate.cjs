@@ -5,10 +5,10 @@
  *
  * Как использовать:
  * 1. Установи Node.js (https://nodejs.org) — скачай LTS версию, установи
- * 2. Установи расширение "Cookie Editor" в браузере
- * 3. Зайди на labs.google, войди в аккаунт Google
- * 4. Нажми Cookie Editor → Export → Header String
- * 5. Вставь скопированную строку ниже в COOKIES
+ * 2. Зайди на labs.google, войди в аккаунт Google
+ * 3. Нажми F12 (DevTools) → Application → Cookies → labs.google
+ * 4. Найди cookie "__Secure-next-auth.session-token", скопируй его ЗНАЧЕНИЕ
+ * 5. Вставь скопированное значение ниже в TOKENS
  * 6. Открой терминал в этой папке и запусти: node generate.cjs
  * 7. Картинки появятся в папке output/
  */
@@ -22,15 +22,16 @@ const crypto = require("crypto");
 // ║  НАСТРОЙКИ — ЗАПОЛНИ НИЖЕ                                   ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// Вставь cookie из браузера (Cookie Editor → Export → Header String)
+// Вставь значение cookie __Secure-next-auth.session-token
+// (из DevTools → Application → Cookies → labs.google)
 // Каждая строка = один аккаунт Google
 // Если у тебя один аккаунт — оставь одну строку, остальные удали
-const COOKIES = [
-  "ВСТАВЬ_COOKIE_1_СЮДА",
-  "ВСТАВЬ_COOKIE_2_СЮДА",
-  "ВСТАВЬ_COOKIE_3_СЮДА",
-  "ВСТАВЬ_COOKIE_4_СЮДА",
-  "ВСТАВЬ_COOKIE_5_СЮДА",
+const TOKENS = [
+  "ВСТАВЬ_ТОКЕН_1_СЮДА",
+  "ВСТАВЬ_ТОКЕН_2_СЮДА",
+  "ВСТАВЬ_ТОКЕН_3_СЮДА",
+  "ВСТАВЬ_ТОКЕН_4_СЮДА",
+  "ВСТАВЬ_ТОКЕН_5_СЮДА",
 ];
 
 // Вставь свои промпты — по одному на строку
@@ -57,6 +58,8 @@ const ASPECT_MAP = {
   PORTRAIT: "IMAGE_ASPECT_RATIO_PORTRAIT",
   SQUARE: "IMAGE_ASPECT_RATIO_SQUARE",
 };
+
+const SESSION_COOKIE_NAME = "__Secure-next-auth.session-token";
 
 // --- HTTP GET ---
 function httpsGet(url, headers) {
@@ -110,7 +113,7 @@ function httpsPost(url, headers, body) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(text);
           } else if (res.statusCode === 401 || res.statusCode === 403) {
-            reject(new Error(`Токен/cookie невалидный (HTTP ${res.statusCode}). Обнови cookie.`));
+            reject(new Error(`Bearer токен невалидный (HTTP ${res.statusCode}). Обнови cookie.`));
           } else {
             reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 300)}`));
           }
@@ -123,18 +126,20 @@ function httpsPost(url, headers, body) {
   });
 }
 
-// --- Шаг 1: Cookie → Bearer Token ---
-async function cookieToToken(cookieString, index) {
-  const label = `[cookie ${index + 1}]`;
-  console.log(`${label} Получаю Bearer токен из cookie...`);
+// --- Шаг 1: Session Token → Bearer Token ---
+async function sessionToBearer(sessionToken, index) {
+  const label = `[аккаунт ${index + 1}]`;
+  console.log(`${label} Получаю Bearer токен...`);
+
+  const cookieHeader = `${SESSION_COOKIE_NAME}=${sessionToken}`;
 
   const response = await httpsGet("https://labs.google/fx/api/auth/session", {
-    cookie: cookieString,
+    cookie: cookieHeader,
   });
 
   const data = JSON.parse(response);
 
-  // Ищем токен в разных полях (зависит от версии API)
+  // Ищем токен в ответе
   const token =
     data.accessToken ||
     data.access_token ||
@@ -143,16 +148,12 @@ async function cookieToToken(cookieString, index) {
     (data.user && data.user.token);
 
   if (!token) {
-    // Логируем что пришло для отладки
-    const keys = Object.keys(data);
-    console.error(`${label} Ответ сервера содержит поля: ${keys.join(", ")}`);
-    if (data.user) {
-      console.error(`${label} data.user содержит: ${Object.keys(data.user).join(", ")}`);
-    }
-    throw new Error(`Не удалось извлечь Bearer токен. Возможно cookie устарел.`);
+    // Логируем ответ для отладки
+    console.error(`${label} Ответ сервера: ${JSON.stringify(data).slice(0, 300)}`);
+    throw new Error("Не удалось получить Bearer токен. Cookie устарел или невалидный.");
   }
 
-  console.log(`${label} Токен получен (${token.slice(0, 20)}...)`);
+  console.log(`${label} Bearer токен получен!`);
   return token;
 }
 
@@ -209,16 +210,17 @@ async function main() {
   console.log("");
 
   // Проверки
-  const realCookies = COOKIES.filter((c) => !c.startsWith("ВСТАВЬ_"));
-  if (realCookies.length === 0) {
-    console.error("ОШИБКА: Ты не вставил cookies!");
+  const realTokens = TOKENS.filter((t) => !t.startsWith("ВСТАВЬ_"));
+  if (realTokens.length === 0) {
+    console.error("ОШИБКА: Ты не вставил токены!");
     console.error("");
-    console.error("Как получить cookie:");
-    console.error("  1. Установи расширение 'Cookie Editor' в Chrome/Firefox");
-    console.error("  2. Зайди на labs.google (войди в Google аккаунт)");
-    console.error("  3. Нажми иконку Cookie Editor → Export → Header String");
-    console.error("  4. Открой generate.cjs в блокноте");
-    console.error("  5. Замени ВСТАВЬ_COOKIE_..._СЮДА на скопированную строку");
+    console.error("Как получить токен:");
+    console.error("  1. Зайди на labs.google (войди в Google аккаунт)");
+    console.error("  2. Нажми F12 → Application → Cookies → labs.google");
+    console.error("  3. Найди __Secure-next-auth.session-token");
+    console.error("  4. Скопируй его ЗНАЧЕНИЕ (длинная строка eyJ...)");
+    console.error("  5. Открой generate.cjs в блокноте");
+    console.error("  6. Замени ВСТАВЬ_ТОКЕН_..._СЮДА на скопированное значение");
     console.error("");
     process.exit(1);
   }
@@ -229,33 +231,32 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Cookies:  ${realCookies.length}`);
-  console.log(`Промптов: ${realPrompts.length}`);
-  console.log(`Формат:   ${ASPECT}`);
-  console.log(`Папка:    ${path.resolve(OUTPUT_DIR)}`);
+  console.log(`Аккаунтов: ${realTokens.length}`);
+  console.log(`Промптов:  ${realPrompts.length}`);
+  console.log(`Формат:    ${ASPECT}`);
+  console.log(`Папка:     ${path.resolve(OUTPUT_DIR)}`);
   console.log("");
 
-  // Шаг 1: Получаем Bearer токены из cookies
-  console.log("--- Шаг 1: Получаем Bearer токены ---");
+  // Шаг 1: Получаем Bearer токены
+  console.log("--- Шаг 1: Авторизация ---");
   const bearerTokens = [];
-  for (let i = 0; i < realCookies.length; i++) {
+  for (let i = 0; i < realTokens.length; i++) {
     try {
-      const token = await cookieToToken(realCookies[i], i);
-      bearerTokens.push(token);
+      const bearer = await sessionToBearer(realTokens[i], i);
+      bearerTokens.push(bearer);
     } catch (err) {
-      console.error(`[cookie ${i + 1}] ОШИБКА: ${err.message}`);
+      console.error(`[аккаунт ${i + 1}] ОШИБКА: ${err.message}`);
     }
   }
 
   if (bearerTokens.length === 0) {
     console.error("");
-    console.error("Не удалось получить ни одного Bearer токена.");
-    console.error("Убедись что ты вставил ПОЛНУЮ строку cookie из Cookie Editor.");
-    console.error("(Это длинная строка вида: SID=xxx; HSID=yyy; __Secure-1PSID=zzz; ...)");
+    console.error("Ни один аккаунт не авторизовался.");
+    console.error("Проверь что токены скопированы правильно и не устарели.");
     process.exit(1);
   }
 
-  console.log(`\nПолучено токенов: ${bearerTokens.length}`);
+  console.log(`\nАвторизовано: ${bearerTokens.length} из ${realTokens.length}`);
   console.log("");
 
   // Шаг 2: Генерируем картинки параллельно
