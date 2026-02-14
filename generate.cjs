@@ -165,15 +165,15 @@ async function generateOne(bearerToken, prompt, index, total) {
   const body = JSON.stringify({
     userInput: {
       candidatesCount: 1,
-      prompts: [{ text: prompt }],
+      prompts: [prompt],
       seed: 0,
     },
     clientContext: {
-      sessionId: crypto.randomUUID(),
-      tool: "TOOL_WHISK",
+      sessionId: ";" + Date.now(),
+      tool: "IMAGE_FX",
     },
     modelInput: {
-      modelNameEnum: "IMAGEN_3_5",
+      modelNameType: "IMAGEN_3_5",
     },
     aspectRatio: ASPECT_MAP[ASPECT] || ASPECT_MAP.LANDSCAPE,
   });
